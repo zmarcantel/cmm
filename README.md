@@ -6,7 +6,8 @@ Cassandra Migrations Manager that makes managing schemas a breeze.
 1. Loads `.cql` files from a directory (or many nested directories)
 2. Sorts them to ensure they are run in order
 3. Executes any new migrations
-4. Works backward to _create_ migrations to get from current state to a desired schema
+4. Works backward to _create_ migrations
+  * Get from where you are now to where you need to be
 
 Production Focused Features
 

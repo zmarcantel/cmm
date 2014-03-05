@@ -8,6 +8,8 @@ import (
     "strings"
 
     "github.com/tux21b/gocql"
+
+    "./db"
 )
 
 //-------------------------------------------------------
@@ -175,6 +177,14 @@ func (self Migration) GetDelay() time.Duration {
 }
 
 
+//
+//  String -- returns query as string representation
+//
+func (self Migration) String() string {
+    return self.Query
+}
+
+
 
 //
 // Sorter
@@ -269,4 +279,109 @@ func DoMigrations(migrations []Migration, delay time.Duration) {
         }
         time.Sleep(delay)
     }
+}
+
+
+//
+//  BackfillTable
+//    Generates a series of queries that equate to the diff of the current table, and a given JSON
+//
+func BackfillTable(table db.TableDescriptor, target map[string]interface{}) []Migration {
+    var result []Migration
+
+    // check for additions
+    for key, value := range target {
+        var found = false
+        var col db.ColumnDescriptor
+        for _, col = range table.Columns {
+            if (col.Name == key) {
+                found = true
+
+                // multitask and look for changed type
+                if (strings.Replace(col.Type, "(", "<", -1) != value) {
+                    result = append(result, ChangeTypeMigration(table, col.Name, value.(string)))
+                }
+
+                // escape for loop
+                break
+            }
+        }
+
+        if (!found) {
+            result = append(result, CreationMigration(table, key, value.(string)))
+        }
+    }
+
+
+    // check for removals
+    for _, col := range table.Columns {
+        var found = false
+        for key, _ := range target {
+            if (col.Name == key) {
+                found = true
+                break
+            }
+        }
+
+        if (!found) {
+            result = append(result, RemovalMigration(table, col.Name))
+        }
+    }
+
+
+    return result
+}
+
+
+//
+//  CreationMigration
+//    Create a migration for adding a field
+//
+func CreationMigration(table db.TableDescriptor, colName string, colType string) Migration {
+    var result = "ALTER TABLE " + table.Keyspace + "." + table.Name + " ADD " + colName + " " + colType + ";"
+
+    var currDate = time.Now().UTC()
+    return Migration{
+        Name:     currDate.Format(time.RFC3339Nano) + "_add_" + colName + "_to_" + table.Name + ".cql",
+        Query:    result,
+    };
+}
+
+
+//
+//  RemovalMigration
+//    Cretes a migration for removing a field
+//
+func RemovalMigration(table db.TableDescriptor, colName string) Migration {
+    var result = "ALTER TABLE " + table.Keyspace + "." + table.Name + " DROP " + colName + ";"
+
+    var currDate = time.Now().UTC()
+    return Migration{
+        Name:     currDate.Format(time.RFC3339Nano) + "_remove_" + colName + "_from_" + table.Name + ".cql",
+        Query:    result,
+    };
+}
+
+
+//
+//  ChangeTypeMigration
+//    Creates a migration for changing a column's type
+//
+func ChangeTypeMigration(table db.TableDescriptor, colName, newType string) Migration {
+    var result = "ALTER TABLE " + table.Keyspace + "." + table.Name + " ALTER " + colName + " TYPE " + newType + ";"
+
+    var currDate = time.Now().UTC()
+    var typeString = strings.Replace(newType, "<", "_of_", -1)
+    typeString = strings.Replace(typeString, ">", "_", -1)
+    typeString = strings.Replace(typeString, " ", "_", -1)
+    typeString = strings.Replace(typeString, ",", "_to_", -1)
+
+
+    typeString = strings.TrimSuffix(typeString, "_")
+    typeString = strings.ToLower(typeString)
+
+    return Migration{
+        Name:     currDate.Format(time.RFC3339Nano) + "_change_" + table.Keyspace + "_" + table.Name + "_" + colName + "_to_" + typeString + ".cql",
+        Query:    result,
+    };
 }

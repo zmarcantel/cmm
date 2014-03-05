@@ -25,14 +25,13 @@ See the [Commands](#informational-commands) section for all the query tools.
 ### Planned Features:
 
 * Load peers from file
-* Model->Migration backfill
-  * Intake JSON, csv, other? of field->type mapping
-  * Inspect current table
-  * Generate migrations
 * Support Solr
   * For the [DataStax](http://www.datastax.com/what-we-offer/products-services/datastax-enterprise) users
   * Upload `schema.xml`
   * Core exist: `reload` Else: `create`
+* Expand Backfilling
+  * Allow changing of `PRIMARY KEY`
+  * Better rename (currently add_new + remove_old)
 
 
 How To Install
@@ -103,18 +102,22 @@ Command Flags
     Verbose       short: "v"   long: "verbose"        description: "Show verbose log information. Supports -v[vvv] syntax."
 
     Protocol      short: "P"   long: "protocol"       description: "Protocol version to use [1 or 2]"
-    Consistency   short: "c"   long: "consistency"    description:"Cassandra consistency to use: one, quorum, all, etc"`
+    Consistency   short: "c"   long: "consistency"    description: "Cassandra consistency to use: one, quorum, all, etc"`
 
     Hosts         short: "p"   long: "peers"          description: "Comma-serparated list of Cassandra hosts (hostname:port)"
     Migrations    short: "m"   long: "migrations"     description: "Directory containing timestamp-prefixed migration files"
 
     Delay         short: "d"   long: "delay"          description: "Wait n milliseconds between migrations"
 
+    File          short: "f"   long: "file"           description: "Generic file input -- used in giving backfill a JSON file"
+    Output        short: "o"   long: "output"         description: "File or path to output operation to"
+
     
     // Pseudo-Commands -- results in information, not commands being run
 
     Help          short: "h"   long: "help"           description: "Show the help menu"
     Describe      short: "D"   long: "describe"       description: "Prints a JSON represntation of ['all', 'none','{keyspace}', '{keyspace}.{table}']"
+    Backfill      short: "b"   long: "backfill"       description: "Backfill migrations based on an existing table and a JSON descriptor provided by --file"
 
 
 #### Examples:
@@ -188,7 +191,7 @@ This directory __can__ be nested! Feel free to use an organizing structure:
 `cmm` sorts migrations alphabetically before running them. This provides a few naming strategies:
 
 * timestamp
-    * prefix title with ISO-8601 timestamp
+    * prefix title with RFC3339 timestamp
     * __preferred__ method
     * `2014-03-02T06-13-03.495Z_create_item_table.cql`
     * Easy to create
@@ -384,3 +387,59 @@ where `column_type` consists of the all-caps options:
 * MAP(X,Y)
 * SET(X)
 * ... I'm probably missing a few but you get the idea
+
+
+
+Backfill
+--------
+
+Backfilling creates all the migrations needed to get from the current table state, to some desired state as described by a JSON file.
+
+
+#### Example JSON Schema: (more in test/schemas)
+
+````json
+{
+  "id":           "UUID PRIMARY KEY",
+  "name":         "TEXT",
+  "email":        "TEXT",
+  "date_joined":  "TIMESTAMP"
+}
+````
+
+### How It Works
+
+Let's pretend we have an existing table `main.users` that looks similar to the above example, except:
+
+* `date_joined` not in table
+* `post_count` in table, but not in the target schema
+* `user_email` renamed to `email` in target schema
+
+Running `cmm --backfill main.users --file schema/users.json` will print the following lines:
+
+    ALTER TABLE main.users ADD date_joined TIMESTAMP;
+    ALTER TABLE main.users DROP post_count;
+    ALTER TABLE main.users DROP user_email;
+    ALTER TABLE main.users ADD email TEXT;
+
+__NOTE:__ for minimal complication, renames are a sequential remove+add -- will be combined in future releases
+
+Migrations are spit out to the console one-per-line.
+
+### Saving
+
+Naturally, you'll need to save these migrations to actually run them.
+
+__Option 1:__
+
+* use `--output` to specify directory
+* generates one file per migration following `RFC3339_some_descriptive_text.cql` format
+* `cmm -b main.users -f users.json -o ./migrations`
+* ___note:___ generated files included nanoseconds as part of the RFC3339 prefix. We just generate them too fast otherwise :)
+
+__Option 2:__
+
+* echo/pipe to a file at the command line
+* `cmm -b main.users -f users.json > migrations.cql`
+* `cmm -b main.users -f users.json | tee -a migrations.cql`
+

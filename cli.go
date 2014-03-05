@@ -20,18 +20,22 @@ import (
 type Options struct {
     Verbose       []bool `short:"v"   long:"verbose"        description:"Show verbose log information. Supports -v[vvv] syntax."`
 
-    Protocol      int    `short:"P"   long:"protocol"       description:"Protocol version to use [1 or 2]"`
-    Consistency   string `short:"c"   long:"consistency"    description:"Cassandra consistency to use: one, quorum, all"`
+    Protocol      int    `short:"P"   long:"protocol"       description:"Protocol version to use [1 or 2]" value-name:"VERSION"`
+    Consistency   string `short:"c"   long:"consistency"    description:"Cassandra consistency to use: one, quorum, all" value-name:"LEVEL"`
 
-    Hosts         string `short:"p"   long:"peers"          description:"Comma-serparated list of Cassandra hosts (hostname:port)"`
-    Migrations    string `short:"m"   long:"migrations"     description:"Directory containing timestamp-prefixed migration files"`
+    Hosts         string `short:"p"   long:"peers"          description:"Comma-serparated list of Cassandra hosts (hostname:port)" value-name:"HOSTS"`
+    Migrations    string `short:"m"   long:"migrations"     description:"Directory containing timestamp-prefixed migration files" value-name:"DIRECTORY"`
 
-    Delay         int    `short:"d"   long:"delay"          description:"Wait n milliseconds between migrations"`
+    Delay         int    `short:"d"   long:"delay"          description:"Wait n milliseconds between migrations" value-name:"MS"`
 
-    // pseudo-commands
+    File          string `short:"f"   long:"file"           description:"File to do operations with [used in config, backfill]" value-name:"FILE"`
+    Output        string `short:"o"   long:"output"         description:"File or path to output operation to"`
+
+    // start pseudo-commands
 
     // help
-    Describe      string `short:"D"   long:"describe"       description:"Print out the current layout as reported by the DB. [optional: keyspace or keyspace.table]" default:"none" `
+    Describe      string `short:"D"   long:"describe"       description:"Print out the current layout as reported by the DB. ['all', keyspace, or keyspace.table]" default:"none" value-name:"ITEM"`
+    Backfill      string `short:"b"   long:"backfill"       description:"Generate migrations equating the the diff of the existing table and the JSON descriptor given by --file" default:"none" value-name:"ITEM"`
 }
 
 var Opts Options
@@ -208,6 +212,11 @@ func handlePseudocommands() {
         handleDescribe()
         os.Exit(1)
     }
+
+    if (Opts.Backfill != "none") {
+        handleBackfill()
+        os.Exit(1)
+    }
 }
 
 
@@ -240,4 +249,57 @@ func handleDescribe() {
     }
 
     fmt.Print(string(result))
+}
+
+
+//
+//  handleBackfill
+//      Initiates the generation of migrations that bring the current table to equal a JSON descriptor
+//
+func handleBackfill() {
+    if (len(Opts.File) <= 0) {
+        fmt.Println("ERROR: must supply (-f, --file) flag to backfill")
+        os.Exit(1)
+    }
+
+    if (strings.Index(Opts.Backfill, ".") < 1) {
+        fmt.Println("ERROR: backfill can only be used on {keyspace}.{table} items")
+        os.Exit(1)
+    }
+
+    // read target JSON
+    var contents, err = ioutil.ReadFile(Opts.File)
+    if (err != nil) {
+        fmt.Printf("ERROR: could not read descriptor JSON:\n%s\n\n", err)
+        os.Exit(1)
+    }
+
+    // unmarshal target JSON
+    var target map[string]interface{}
+    var jsonErr = json.Unmarshal(contents, &target)
+    if (jsonErr != nil) {
+        fmt.Printf("ERROR: could not parse descriptor JSON:\n%s\n\n", jsonErr)
+        os.Exit(1)
+    }
+
+    delete(target, "_")
+
+    // get existing table
+    var parts = strings.Split(Opts.Backfill, ".")
+    var table = db.Table(parts[0], parts[1])
+
+    var migrations = BackfillTable(table, target)
+
+    for _, mig := range migrations {
+        // if no output path specified, just print
+        if (len(Opts.Output) == 0) {
+            fmt.Printf("%s\n", mig.Query)
+        } else {
+            // gave us a string, hopefully path
+            var err = ioutil.WriteFile(filepath.Join(Opts.Output, mig.Name), []byte(mig.Query), 0777)
+            if (err != nil) {
+                fmt.Printf("ERROR: could not save migration to directory [%s]\n%s\n\n", Opts.Output, err)
+            }
+        }
+    }
 }

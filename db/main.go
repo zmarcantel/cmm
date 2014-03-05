@@ -18,6 +18,7 @@ type ColumnDescriptor struct {
 
 type TableDescriptor struct {
     Name        string
+    Keyspace    string
     Columns     []ColumnDescriptor
 }
 
@@ -152,6 +153,7 @@ func AllTables(keyspace string) (result []TableDescriptor) {
     for iter.Scan(&name) {
         result = append(result, TableDescriptor{
             Name:           name,
+            Keyspace:       keyspace,
             Columns:        ListColumns(keyspace, name),
         })
     }
@@ -171,6 +173,7 @@ func AllTables(keyspace string) (result []TableDescriptor) {
 func Table(keyspace, table string) (result TableDescriptor) {
     return TableDescriptor{
         Name:           table,
+        Keyspace:       keyspace,
         Columns:        ListColumns(keyspace, table),
     }
 }

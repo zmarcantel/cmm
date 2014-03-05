@@ -7,9 +7,17 @@ Cassandra Migrations Manager that makes managing schemas a breeze.
 2. Sorts them to ensure they are run in order
 3. Executes any new migrations
 
-Supports connection pooling and setting protocol version.
+Production Focused Features
 
-See the [Options](#command-flags) section for information on how to use it.
+1. [Connection pooling](#hosts)
+2. [Set per-migration delay times](#migration-file)
+3. [Schema to JSON](#describe)
+4. [Setting protocol version](#protocol)
+
+
+See the [Options](#command-flags) section for all the available settings.
+
+See the [Commands](#informational-commands) section for all the query tools.
 
 ### Planned Features:
 
@@ -98,6 +106,13 @@ Command Flags
     Migrations    short: "m"   long: "migrations"     description: "Directory containing timestamp-prefixed migration files"
 
     Delay         short: "d"   long: "delay"          description: "Wait n milliseconds between migrations"
+
+    
+    // Pseudo-Commands -- results in information, not commands being run
+
+    Help          short: "h"   long: "help"           description: "Show the help menu"
+    Describe      short: "D"   long: "describe"       description: "Prints a JSON represntation of ['all', 'none','{keyspace}', '{keyspace}.{table}']"
+
 
 #### Examples:
 
@@ -270,3 +285,99 @@ Change Cassandra's distributed conistency requirement.
     Long:   `--consistency`
 
 #### Default: `quorum`
+
+
+
+
+Informational Commands
+======================
+
+* [Describe](#describe) -- describes the entire system, a keyspace, or keyspace.table in pretty-printed JSON
+
+
+Describe
+--------
+
+Prints a JSON representation of the requested schemas.
+
+Available argument formats include `all`, `none`, `{keyspace}`, and `{keyspace}.{table}`.
+
+#### __cmm --describe all__:
+
+````json
+[
+    {
+        "Name": "keyspace_name",
+        "Options": {
+            "replication_factor": "3",
+            "strategy_option_2": "value",
+            "etc": "etc"
+        },
+        "Tables": [
+            {
+                "Name": "table_name",
+                "Columns": [
+                    {
+                        "Name": "column_name",
+                        "Type": "column_type",
+                        "Primary": true
+                    }
+                ]
+            }
+        ]
+    }
+]
+````
+
+#### __cmm --describe keyspace__:
+
+````json
+{
+    "Name": "keyspace_name",
+    "Options": {
+        "replication_factor": "3",
+        "strategy_option_2": "value",
+        "etc": "etc"
+    },
+    "Tables": [
+        {
+            "Name": "table_name",
+            "Columns": [
+                {
+                    "Name": "column_name",
+                    "Type": "column_type",
+                    "Primary": true
+                }
+            ]
+        }
+    ]
+}
+````
+
+#### __cmm --describe keyspace.table__:
+
+````json
+{
+    "Name": "table_name",
+    "Columns": [
+        {
+            "Name": "column_name",
+            "Type": "column_type",
+            "Primary": true
+        }
+    ]
+}
+````
+
+where `column_type` consists of the all-caps options:
+
+* TEXT
+* INT32
+* INT64
+* FLOAT
+* UUID
+* TIMEUUID
+* BYTE
+* MAP(X,Y)
+* SET(X)
+* ... I'm probably missing a few but you get the idea

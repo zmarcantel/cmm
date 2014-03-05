@@ -6,6 +6,8 @@ import (
     "time"
 
     "github.com/tux21b/gocql"
+
+    "./db"
 )
 
 var Hosts           []string
@@ -27,10 +29,6 @@ func main() {
     // handle all cli arguments
     HandleArguments()
 
-    // load migration files and sort them
-    GetMigrationFiles(Opts.Migrations)
-    fmt.Printf("Loaded %d migrations\n", len(Migrations))
-
     // build cassandra hosts from the cli/default
     BuildHosts(Opts.Hosts)
 
@@ -38,6 +36,14 @@ func main() {
     // var cluster *gocql.ClusterConfig
     _, Session = connectCluster()
     defer Session.Close()
+    db.Init(Session)
+
+    // handle arguments that do not result in running migrations
+    handlePseudocommands()
+
+    // load migration files and sort them
+    GetMigrationFiles(Opts.Migrations)
+    fmt.Printf("Loaded %d migrations\n", len(Migrations))
 
     // idempotently create migrations keyspace/table
     CreateMigrationTable(Session)

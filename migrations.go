@@ -4,6 +4,7 @@ import (
     "os"
     "fmt"
     "time"
+    "regexp"
     "strings"
 
     "github.com/tux21b/gocql"
@@ -144,6 +145,35 @@ func (self Migration) MarkComplete() error {
     return nil
 }
 
+//
+//  GetDelay
+//      Parse the comments to see if a delay has been set
+//      If not, the SettleTime resolved from the cli is used
+//
+//      comment form: '-- delay: 500' with or without spaces
+//
+func (self Migration) GetDelay() time.Duration {
+    var result = SettleTime
+
+    // matches format `-- delay: ###` with spaces irrelevant and # being a count in ms
+    var delayRegex = regexp.MustCompile(`--\s?delay:\s?[0-9]+`)
+    var migrationDelay = delayRegex.Find([]byte(self.Query))
+
+    if (len(migrationDelay) > 0) {
+        var delayString = string(migrationDelay)
+        var msString = delayString[ (strings.LastIndex(delayString, ":") + 1) : ] + "ms"
+
+        var err error
+        result, err = time.ParseDuration(strings.TrimSpace(msString))
+        if (err != nil) {
+            fmt.Printf("ERROR: could not parse migration-level delay\n%s\n\n", err)
+            os.Exit(1)
+        }
+    }
+
+    return result
+}
+
 
 
 //
@@ -231,6 +261,12 @@ func DoMigrations(migrations []Migration, delay time.Duration) {
     // iterate over the migrations we loaded
     for _, m := range migrations {
         m.Exec()
+
+        // delay
+        var delay = m.GetDelay()
+        if (delay > 0 && Verbosity >= SOFT) {
+            fmt.Printf("\tWaiting %s\n", delay)
+        }
         time.Sleep(delay)
     }
 }

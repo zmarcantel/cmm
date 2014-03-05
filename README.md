@@ -14,8 +14,6 @@ See the [Options](#command-flags) section for information on how to use it.
 ### Planned Features:
 
 * Load peers from file
-* In-file comment flag for per-migration delay
-  * `-- delay: 500`
 * Model->Migration backfill
   * Intake JSON, csv, other? of field->type mapping
   * Inspect current table
@@ -55,6 +53,37 @@ The below steps are usable on all machines. (Install is different on windows)
 ___Note:___ install may not require `sudo`
 
 On ___Windows___, `make install` will fail as it tries to copy into `/usr/local/bin`. Windows does not have this directory, but then again, Cassandra is typically not run on Windows. Just move `bin/cmm` to somewhere exectuable by `cmd.exe`
+
+
+Migration File
+==============
+
+All migration files are loaded, split into individual queries (split by ';'), and run sequentially.
+
+Optionally, a comment sepcifying a per-migration delay can be used.
+
+* `-- delay: ###`
+  * spaces do not matter
+  * ### is the amount of milliseconds
+
+#### Example
+
+    -- delay: 1500
+    -- the above comment is parsed, adding a 1500ms delay to end of this query
+    
+    ALTER TABLE main.users ADD friends SET<UUID>;
+    ALTER TABLE main.users ADD recommended_friends SET<UUID>;
+
+    CREATE TABLE main.friend_recommendations (
+        id              UUID PRIMARY KEY,
+        user            UUID,
+        recommending    UUID,
+        date            TIMESTAMP,
+        rating          FLOAT
+    );
+
+
+
 
 
 Command Flags

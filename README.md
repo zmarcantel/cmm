@@ -30,7 +30,13 @@ See the [Options](#command-flags) section for information on how to use it.
 How To Install
 ==============
 
-`pre-requisite: [go](http://golang.org/)`
+Binaries coming soon!
+
+#### Pre-requisite
+
+* [go](http://golang.org/)
+
+#### Steps
 
 The below steps are usable on all machines. (Install is different on windows)
 

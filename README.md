@@ -15,9 +15,12 @@ Production Focused Features
 4. [Setting protocol version](#protocol)
 
 
+See the [Examples](#examples) section and see how easy it can be.
+
 See the [Options](#command-flags) section for all the available settings.
 
 See the [Commands](#informational-commands) section for all the query tools.
+
 
 ### Planned Features:
 

@@ -10,9 +10,10 @@ Cassandra Migrations Manager that makes managing schemas a breeze.
 Production Focused Features
 
 1. [Connection pooling](#hosts)
-2. [Set per-migration delay times](#migration-file)
-3. [Schema to JSON](#describe)
-4. [Setting protocol version](#protocol)
+2. [Schema to JSON](#describe)
+3. [JSON to Schema](#backfill)
+4. [Set per-migration delay times](#migration-file)
+5. [Setting protocol version](#protocol)
 
 
 See the [Examples](#examples) section and see how easy it can be.

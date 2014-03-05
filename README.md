@@ -145,6 +145,7 @@ Command Flags
 =============
 
     Verbose       short: "v"   long: "verbose"        description: "Show verbose log information. Supports -v[vvv] syntax."
+    Config        short: "C"   long: "config"         description: "Provide a path to a JSON file containing hosts,migrations,version,etc"`
 
     Protocol      short: "P"   long: "protocol"       description: "Protocol version to use [1 or 2]"
     Consistency   short: "c"   long: "consistency"    description: "Cassandra consistency to use: one, quorum, all, etc"`

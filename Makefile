@@ -7,7 +7,7 @@ dependencies:
 	# go list -f "{{range .Imports}}{{.}} {{end}}" ./*.go | xargs go get
 
 todo:
-	grep -nri "// TODO:"
+	grep -nri "TODO:"
 
 install:
 	cp bin/$(PROG_NAME) /usr/local/bin/

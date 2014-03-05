@@ -17,8 +17,10 @@ import (
     "./db"
 )
 
+var Opts Options
 type Options struct {
     Verbose       []bool `short:"v"   long:"verbose"        description:"Show verbose log information. Supports -v[vvv] syntax."`
+    Config        string `short:"C"   long:"config"         description:"Provide a path to a JSON file containing hosts,migrations,version,etc" value-name:"FILE"`
 
     Protocol      int    `short:"P"   long:"protocol"       description:"Protocol version to use [1 or 2]" value-name:"VERSION"`
     Consistency   string `short:"c"   long:"consistency"    description:"Cassandra consistency to use: one, quorum, all" value-name:"LEVEL"`
@@ -26,7 +28,7 @@ type Options struct {
     Hosts         string `short:"p"   long:"peers"          description:"Comma-serparated list of Cassandra hosts (hostname:port)" value-name:"HOSTS"`
     Migrations    string `short:"m"   long:"migrations"     description:"Directory containing timestamp-prefixed migration files" value-name:"DIRECTORY"`
 
-    Delay         int    `short:"d"   long:"delay"          description:"Wait n milliseconds between migrations" value-name:"MS"`
+    Delay         int64  `short:"d"   long:"delay"          description:"Wait n milliseconds between migrations" value-name:"MS"`
 
     File          string `short:"f"   long:"file"           description:"File to do operations with [used in config, backfill]" value-name:"FILE"`
     Output        string `short:"o"   long:"output"         description:"File or path to output operation to"`
@@ -38,7 +40,19 @@ type Options struct {
     Backfill      string `short:"b"   long:"backfill"       description:"Generate migrations equating the the diff of the existing table and the JSON descriptor given by --file" default:"none" value-name:"ITEM"`
 }
 
-var Opts Options
+
+type Config struct {
+    Protocol       int
+    Consistency    string
+
+    Peers          []string
+    Migrations     string
+
+    Delay          int64
+    File           string
+    Output         string
+}
+
 
 //
 // Parse the supplied cli arguments
@@ -47,6 +61,15 @@ func HandleArguments() {
     if _, help := flags.Parse(&Opts) ; help != nil {
         os.Exit(1)
     } else {
+        // handle config first so any other specified arguments overwrite it
+        if (len(Opts.Config) > 0) {
+            if (Verbosity >= SOFT) {
+                fmt.Printf("Loading config from %s\n", Opts.Config)
+            }
+            handleConfig()
+        }
+
+
         // handle hosts list
         if (len(Opts.Hosts) == 0) {
             if (Verbosity >= SOFT) {
@@ -66,7 +89,7 @@ func HandleArguments() {
         // handle delay timer
         var delayErr error
         if (Opts.Delay > 0) {
-            SettleTime, delayErr = time.ParseDuration(strconv.Itoa(Opts.Delay) + "ms")
+            SettleTime, delayErr = time.ParseDuration(strconv.FormatInt(Opts.Delay, 10) + "ms")
             if (Verbosity >= SOFT) {
                 fmt.Printf("Adding %dms delay after all queries\n", Opts.Delay)
             }
@@ -300,6 +323,63 @@ func handleBackfill() {
             if (err != nil) {
                 fmt.Printf("ERROR: could not save migration to directory [%s]\n%s\n\n", Opts.Output, err)
             }
+        }
+    }
+}
+
+
+//
+//  handleConfig
+//      Load a configuration map from a given JSON file
+//
+func handleConfig() {
+    var contents, err = ioutil.ReadFile(Opts.Config)
+    if (err != nil) {
+        fmt.Printf("ERROR: cannot read config file [%s]\n%s\n\n", Opts.Config, err)
+        os.Exit(1)
+    }
+
+    var formatted map[string]interface{}
+    var jsonErr = json.Unmarshal(contents, &formatted)
+    if (jsonErr != nil) {
+        fmt.Printf("ERROR: cannot read config file json:\n%s\n\n", jsonErr)
+        os.Exit(1)
+    }
+
+    for key, val := range formatted {
+        switch(key) {
+            case "Protocol":
+                Opts.Protocol = int(val.(float64))
+                break
+
+            case "Consistency":
+                Opts.Consistency = val.(string)
+                break
+
+
+            case "Peers":
+                for _, p := range val.([]interface{}) {
+                    if ( len(Opts.Hosts) > 0 ) { Opts.Hosts += "," }
+                    Opts.Hosts += p.(string)
+                }
+                // Opts.Hosts = strings.Join(val, ",")
+                break
+
+            case "Migrations":
+                Opts.Migrations = val.(string)
+                break
+
+            case "Delay":
+                Opts.Delay = int64(val.(float64))
+                break
+
+            case "File":
+                Opts.File = val.(string)
+                break
+
+            case "Output":
+                Opts.Output = val.(string)
+                break
         }
     }
 }

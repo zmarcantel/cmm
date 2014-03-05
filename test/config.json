@@ -1,0 +1,16 @@
+{
+    "Protocol":       2,
+    "Consistency":    "quorum",
+
+    "Peers":          [
+        "127.0.0.1",
+        "192.168.33.100:9000",
+        "dbtwo"
+    ],
+
+    "Migrations":     "./",
+
+    "Delay":          0,
+    "File":           "some/input/file",
+    "Output":         "some/output/path/or/file"
+}

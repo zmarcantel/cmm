@@ -16,16 +16,19 @@ Production Focused Features
 5. [Setting protocol version](#protocol)
 
 
-See the [Examples](#examples) section and see how easy it can be.
+Table of Contents:
+* [Examples](#examples) -- see how easy it can be
+* [Options](#command-flags) -- all the available settings
+* [Migration File](#migration-file) -- how to create migrations
+* [Config File](#config-file) -- load any/all options from a json file
+* [Query Commands](#informational-commands) -- easily query metadata about your db, keyspaces, or columnfamiles
+  * [describe](#describe) -- schema to json
+  * [backfill](#backfill) -- json to schema
 
-See the [Options](#command-flags) section for all the available settings.
 
-See the [Commands](#informational-commands) section for all the query tools.
+Planned Features
+================
 
-
-### Planned Features:
-
-* Load peers from file
 * Support Solr
   * For the [DataStax](http://www.datastax.com/what-we-offer/products-services/datastax-enterprise) users
   * Upload `schema.xml`
@@ -94,6 +97,45 @@ Optionally, a comment sepcifying a per-migration delay can be used.
     );
 
 
+
+
+Config File
+===========
+
+`cmm` supports loading all command flags (except for pseudo-commands) from a JSON file.
+
+This is helpful when scripting certain actions or dealing with frequently-appearing yet fairly static options like `peers` or `migrations`
+
+__NOTE:__ any options provided on the command line overrule any given in the config file
+
+### How to load config
+
+Simply supply the `-C` or `--config` flag followed by a path to the file.
+
+TODO: automatically load `cmm.json` in current directory
+
+### Example Config
+
+There is an example in `test/config.json` as well.
+
+````json
+{
+    "Protocol":       2,
+    "Consistency":    "quorum",
+
+    "Peers":          [
+        "192.168.33.100",
+        "192.168.33.101",
+        "192.168.33.150"
+    ],
+
+    "Migrations":     "../",
+
+    "Delay":          250,
+    "File":           "./schemas/user.json",
+    "Output":         "./schemas"
+}
+````
 
 
 

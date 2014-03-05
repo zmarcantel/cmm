@@ -345,6 +345,7 @@ Informational Commands
 ======================
 
 * [Describe](#describe) -- describes the entire system, a keyspace, or keyspace.table in pretty-printed JSON
+* [Backfill](#backfill) -- generates a series of migrations to get from the current table layout to some desired one
 
 
 Describe

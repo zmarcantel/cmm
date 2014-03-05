@@ -1,8 +1,10 @@
 PROG_NAME=cmm
 
-default:
-	go get ./
+default: dependencies
 	go build -o bin/$(PROG_NAME)
+
+dependencies:
+	go list -f "{{range .Imports}}{{.}} {{end}}" ./ | xargs go get
 
 todo:
 	grep -nri "// TODO:"

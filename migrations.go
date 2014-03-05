@@ -58,7 +58,7 @@ func (self Migration) Exec() error {
             fmt.Printf("\tPart: %d\n", i)
         }
 
-        var err = Session.Query(query).Exec()
+        var err = Session.Query(query).Consistency(Consistency).Exec()
         if err != nil {
             fmt.Printf("Error applying [%s]:\n\tQuery: '%s'\n%s\n", self.Name, query, err)
             os.Exit(1)
@@ -89,7 +89,7 @@ func (self Migration) IsComplete() (bool, error) {
     // existence indicates completion
     var err = Session.Query(
         `SELECT * FROM migrations.completed WHERE name = ?`,
-        self.Name).Consistency(gocql.Quorum).Scan(&name, &date)
+        self.Name).Consistency(Consistency).Scan(&name, &date)
 
     // not found is a passable error -- the scan is a better indicator
     // handle errors here

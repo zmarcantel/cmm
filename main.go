@@ -8,11 +8,12 @@ import (
     "github.com/tux21b/gocql"
 )
 
-var Hosts       []string
-var Migrations  MigrationCollection
-var SettleTime  time.Duration
-var Session     *gocql.Session
-var Verbosity   int
+var Hosts           []string
+var Migrations      MigrationCollection
+var SettleTime      time.Duration
+var Session         *gocql.Session
+var Verbosity       int
+var Consistency     gocql.Consistency
 
 const (
     QUIET   = 0;

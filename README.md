@@ -13,7 +13,6 @@ See the [Options](#command-flags) section for information on how to use it.
 
 ### Planned Features:
 
-* Set consistency from cli
 * Load peers from file
 * In-file comment flag for per-migration delay
   * `-- delay: 500`
@@ -61,14 +60,15 @@ On ___Windows___, `make install` will fail as it tries to copy into `/usr/local/
 Command Flags
 =============
 
-    Verbose     short: "v"   long: "verbose"     description: "Show verbose log information. Supports -v[vvv] syntax."
+    Verbose       short: "v"   long: "verbose"        description: "Show verbose log information. Supports -v[vvv] syntax."
 
-    Protocol    short: "P"   long: "protocol"    description: "Protocol version to use [1 or 2]"
+    Protocol      short: "P"   long: "protocol"       description: "Protocol version to use [1 or 2]"
+    Consistency   short: "c"   long: "consistency"    description:"Cassandra consistency to use: one, quorum, all, etc"`
 
-    Hosts       short: "p"   long: "peers"       description: "Comma-serparated list of Cassandra hosts (hostname:port)"
-    Migrations  short: "m"   long: "migrations"  description: "Directory containing timestamp-prefixed migration files"
+    Hosts         short: "p"   long: "peers"          description: "Comma-serparated list of Cassandra hosts (hostname:port)"
+    Migrations    short: "m"   long: "migrations"     description: "Directory containing timestamp-prefixed migration files"
 
-    Delay       short: "d"   long: "delay"       description: "Wait n milliseconds between migrations"
+    Delay         short: "d"   long: "delay"          description: "Wait n milliseconds between migrations"
 
 #### Examples:
 
@@ -215,3 +215,29 @@ New versions (>=2.0.0) utilize version `2`. (default)
     Long:   `--protocol`
 
 #### Default: `2`
+
+
+Consistency
+-----------
+
+Change Cassandra's distributed conistency requirement.
+
+#### Available
+
+* any
+* one
+* two
+* three
+* quorum
+* all
+* localquorum
+* eachquorum
+* serial
+* localserial
+
+#### Argument
+
+    Short:  `-c`
+    Long:   `--consistency`
+
+#### Default: `quorum`

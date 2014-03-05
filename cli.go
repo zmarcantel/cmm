@@ -11,17 +11,19 @@ import (
     "path/filepath"
 
     "github.com/jessevdk/go-flags"
+    "github.com/tux21b/gocql"
 )
 
 type Options struct {
-    Verbose     []bool `short:"v"   long:"verbose"     description:"Show verbose log information. Supports -v[vvv] syntax."`
+    Verbose       []bool `short:"v"   long:"verbose"        description:"Show verbose log information. Supports -v[vvv] syntax."`
 
-    Protocol    int    `short:"P"   long:"protocol"    description:"Protocol version to use [1 or 2]"`
+    Protocol      int    `short:"P"   long:"protocol"       description:"Protocol version to use [1 or 2]"`
+    Consistency   string `short:"c"   long:"consistency"    description:"Cassandra consistency to use: one, quorum, all"`
 
-    Hosts       string `short:"p"   long:"peers"       description:"Comma-serparated list of Cassandra hosts (hostname:port)"`
-    Migrations  string `short:"m"   long:"migrations"  description:"Directory containing timestamp-prefixed migration files"`
+    Hosts         string `short:"p"   long:"peers"          description:"Comma-serparated list of Cassandra hosts (hostname:port)"`
+    Migrations    string `short:"m"   long:"migrations"     description:"Directory containing timestamp-prefixed migration files"`
 
-    Delay       int    `short:"d"   long:"delay"       description:"Wait n milliseconds between migrations"`
+    Delay         int    `short:"d"   long:"delay"          description:"Wait n milliseconds between migrations"`
 }
 
 var Opts Options
@@ -52,7 +54,63 @@ func HandleArguments() {
         }
         if (delayErr != nil) { panic(delayErr) }
 
+        // handle verbosity
         Verbosity = len(Opts.Verbose)
+
+        // handle consistency
+        if (len(Opts.Consistency) == 0) {
+            Consistency = gocql.Quorum
+        } else {
+            switch(strings.ToLower(Opts.Consistency)) {
+                case "any":
+                    Consistency = gocql.Any
+                    break
+
+                case "one":
+                    Consistency = gocql.One
+                    break
+
+                case "two":
+                    Consistency = gocql.Two
+                    break
+
+                case "three":
+                    Consistency = gocql.Three
+                    break
+
+                case "quorum":
+                    Consistency = gocql.Quorum
+                    break
+
+                case "all":
+                    Consistency = gocql.All
+                    break
+
+                case "localquorum":
+                    Consistency = gocql.LocalQuorum
+                    break
+
+                case "eachquorum":
+                    Consistency = gocql.EachQuorum
+                    break
+
+                case "serial":
+                    Consistency = gocql.Serial
+                    break
+
+                case "localserial":
+                    Consistency = gocql.LocalSerial
+                    break
+
+                default:
+                    Consistency = gocql.Quorum
+                    break
+            }
+
+            if (Verbosity > QUIET) {
+                fmt.Printf("Using consistency: %s\n", Consistency)
+            }
+        }
     }
 }
 

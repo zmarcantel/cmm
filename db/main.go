@@ -83,7 +83,11 @@ func Keyspace(name string) KeyspaceDescriptor {
     // create an iterator over keyspace descriptors
     var err = Session.Query(`SELECT strategy_options FROM system.schema_keyspaces WHERE keyspace_name = ?;`, name).Scan(&options)
     if err != nil {
-        fmt.Printf("ERROR: could not get keyspace:\n%s\n", err)
+        if (err.Error() == "not found") {
+            fmt.Println("That kayspace does not exist.")
+        } else {
+            fmt.Printf("ERROR: could not get keyspace:\n%s\n", err)
+        }
         os.Exit(1)
     }
 
@@ -171,6 +175,17 @@ func AllTables(keyspace string) (result []TableDescriptor) {
 //      Get the table descriptor for a single table in a given keyspace
 //
 func Table(keyspace, table string) (result TableDescriptor) {
+    var name string
+    var err = Session.Query(`SELECT columnfamily_name FROM system.schema_columnfamilies WHERE keyspace_name = ? AND columnfamily_name = ?;`, keyspace, table).Scan(&name)
+    if (err != nil) {
+        if (err.Error() == "not found") {
+            fmt.Println("That columnfamily does not exist.")
+        } else {
+            fmt.Printf("ERROR: could not get columnfamily from system schema\n%s\n\n", err)
+        }
+        os.Exit(1)
+    }
+
     return TableDescriptor{
         Name:           table,
         Keyspace:       keyspace,

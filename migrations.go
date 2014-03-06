@@ -19,7 +19,6 @@ import (
 type Migration struct {
     Name        string
     Path        string
-    File        *os.FileInfo
     Query       string
 }
 

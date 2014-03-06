@@ -13,6 +13,7 @@ import (
 
     "github.com/jessevdk/go-flags"
     "github.com/tux21b/gocql"
+    "github.com/aybabtme/color"
 
     "./db"
 )
@@ -38,6 +39,8 @@ type Options struct {
     // help
     Describe      string `short:"D"   long:"describe"       description:"Print out the current layout as reported by the DB. ['all', keyspace, or keyspace.table]" default:"none" value-name:"ITEM"`
     Backfill      string `short:"b"   long:"backfill"       description:"Generate migrations equating the the diff of the existing table and the JSON descriptor given by --file" default:"none" value-name:"ITEM"`
+    List          bool   `short:"l"   long:"list"           description:"Return a list of complete and remaining migrations."`
+    JsonList      bool   `short:"j"   long:"list.json"      description:"Same as above, but returns the sets as distinct JSON arrays (complete, remaining) within a parent object"`
 }
 
 
@@ -52,6 +55,9 @@ type Config struct {
     File           string
     Output         string
 }
+
+var ANSI_PASS = color.NewStyle(color.BlackPaint, color.GreenPaint).Brush()
+var ANSI_FAIL = color.NewStyle(color.BlackPaint, color.RedPaint).Brush()
 
 
 //
@@ -204,7 +210,6 @@ func GetMigrationFiles(dir string) {
             Migrations = append(Migrations, Migration{
                 Name:           info.Name(),
                 Path:           path,
-                File:           &info,
                 Query:          string(contents),
             })
         }
@@ -238,6 +243,11 @@ func handlePseudocommands() {
 
     if (Opts.Backfill != "none") {
         handleBackfill()
+        os.Exit(1)
+    }
+
+    if (Opts.List || Opts.JsonList) {
+        handleList(Opts.JsonList)
         os.Exit(1)
     }
 }
@@ -397,7 +407,6 @@ func handleConfig() {
                     if ( len(Opts.Hosts) > 0 ) { Opts.Hosts += "," }
                     Opts.Hosts += p.(string)
                 }
-                // Opts.Hosts = strings.Join(val, ",")
                 break
 
             case "Migrations":
@@ -415,6 +424,51 @@ func handleConfig() {
             case "Output":
                 Opts.Output = val.(string)
                 break
+        }
+    }
+}
+
+
+//
+//  handleList
+//      Return lists of completed and remaining migrations
+//      JSON flag determines if output is JSON
+//
+func handleList(isJson bool) { // should explicitly be passed Opts.JsonList
+    GetMigrationFiles(Opts.Migrations)
+
+    var complete = make([]Migration, 0)
+    var remaining = make([]Migration, 0)
+    for _, mig := range Migrations {
+        var isComplete, err = mig.IsComplete()
+        if (err != nil) {
+            fmt.Printf("ERROR: error checking completion status of [%s]\n%s\n\n", mig.Name, err)
+            return
+        }
+
+        if (isComplete == false) {
+            remaining = append(remaining, mig)
+        } else {
+            complete = append(complete, mig)
+        }
+    }
+
+    if (isJson) {
+        var formatted, err = json.MarshalIndent(map[string][]Migration{
+            "Complete":       complete,
+            "Remaining":      remaining,
+        }, "", "    ")
+        if (err != nil) {
+            fmt.Printf("ERROR: could not marshal JSON of --list\n%s\n\n", err)
+            return
+        }
+        fmt.Println(string(formatted))
+    } else {
+        for _, mig := range complete {
+            fmt.Printf("%5s  %s\n", ANSI_PASS("+"), ANSI_PASS(mig.Name))
+        }
+        for _, mig := range remaining {
+            fmt.Printf("%5s  %2s\n", ANSI_FAIL("-"), ANSI_FAIL(mig.Name))
         }
     }
 }

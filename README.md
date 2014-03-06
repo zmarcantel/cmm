@@ -26,6 +26,7 @@ Table of Contents:
 * [Query Commands](#informational-commands) -- easily query metadata about your db, keyspaces, or columnfamiles
   * [describe](#describe) -- schema to json
   * [backfill](#backfill) -- json to schema
+  * [list](#list) -- print report of completed/remaining migrations
 
 
 Planned Features
@@ -164,6 +165,8 @@ Command Flags
     Help          short: "h"   long: "help"           description: "Show the help menu"
     Describe      short: "D"   long: "describe"       description: "Prints a JSON represntation of ['all', 'none','{keyspace}', '{keyspace}.{table}']"
     Backfill      short: "b"   long: "backfill"       description: "Backfill migrations based on an existing table and a JSON descriptor provided by --file"
+    List          short: "l"   long: "list"           description: "Prints a list of migrations that have been completed and those that need to be run"
+    List          short: "j"   long: "list.json"      description: "Same as the list function above, but prints out JSON"
 
 
 #### Examples:
@@ -442,6 +445,8 @@ Backfill
 
 Backfilling creates all the migrations needed to get from the current table state, to some desired state as described by a JSON file.
 
+If you `--backfill` a columnfamily that does not exist, a `CREATE TABLE` query will be output assuming your schema.json file is valid.
+
 
 #### Example JSON Schema: (more in test/schemas)
 
@@ -490,3 +495,45 @@ __Option 2:__
 * `cmm -b main.users -f users.json > migrations.cql`
 * `cmm -b main.users -f users.json | tee -a migrations.cql`
 
+
+List
+----
+
+List which migrations _have_ and _have not_ been run.
+
+#### Option 1: ANSI-Colored Output
+
+A standard `--list` will print one migration per line.
+
+This line will follow the format
+
+    +/-  NAME
+
+similar to a diff file (where + is done and - is remaining).
+
+If your terminal supports ANSI coloring, completed migrations will be printed in green whereas remaining migrations are printed in red.
+
+
+#### Option 2: JSON Output
+
+Using either `-j` or `--list.json`, a json object of the format
+
+````json
+{
+    "Complete": [
+        {
+            "Name": "FILENAME",
+            "Path": "PATH_TO_MIGRATION_FILE",
+            "Query": "CQL_QUERY_STATEMENTS"
+        }
+    ],
+
+    "Remaining": [
+        {
+            "Name": "FILENAME",
+            "Path": "PATH_TO_MIGRATION_FILE",
+            "Query": "CQL_QUERY_STATEMENTS"
+        }
+    ]
+}
+````

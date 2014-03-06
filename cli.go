@@ -253,16 +253,40 @@ func handleDescribe() {
     var err error
 
     if (Opts.Describe == "" || Opts.Describe == "all") {    // "all", or just --describe
-        var keyspaces = db.AllKeyspaces()
+        var keyspaces, err = db.AllKeyspaces()
+        if (err != nil) {
+            if (err.Error() == "not found") {
+                fmt.Println("That kayspace does not exist.")
+            } else {
+                fmt.Printf("ERROR: could not get keyspace:\n%s\n", err)
+            }
+            os.Exit(1)
+        }
         result, err = json.MarshalIndent(keyspaces, "", "    ")
 
     } else if (strings.Index(Opts.Describe, ".") > 0) {     // keyspace.table pair
         var parts = strings.Split(Opts.Describe, ".")
-        var table = db.Table(parts[0], parts[1])
+        var table, err = db.Table(parts[0], parts[1])
+        if (err != nil) {
+            if (err.Error() == "not found") {
+                fmt.Println("That columnfamily does not exist.")
+            } else {
+                fmt.Printf("ERROR: could not get columnfamily:\n%s\n", err)
+            }
+            os.Exit(1)
+        }
         result, err = json.MarshalIndent(table, "", "    ")
 
     } else {                                                // default to keyspace
-        var keyspace = db.Keyspace(Opts.Describe)
+        var keyspace, err = db.Keyspace(Opts.Describe)
+        if (err != nil) {
+            if (err.Error() == "not found") {
+                fmt.Println("That columnfamily does not exist.")
+            } else {
+                fmt.Printf("ERROR: could not get columnfamily:\n%s\n", err)
+            }
+            os.Exit(1)
+        }
         result, err = json.MarshalIndent(keyspace, "", "    ")
     }
 
@@ -307,12 +331,23 @@ func handleBackfill() {
 
     delete(target, "_")
 
+    // create the placeholder for the result migrations
+    var migrations []Migration
+
     // get existing table
     var parts = strings.Split(Opts.Backfill, ".")
-    var table = db.Table(parts[0], parts[1])
+    var table, tblErr = db.Table(parts[0], parts[1])
+    if (tblErr != nil) {
+        if (tblErr.Error() == "not found") {
+            migrations = CreateTableMigration(parts[0], parts[1], target)
+        } else {
+            os.Exit(1)
+        }
+    } else {
+        migrations = BackfillTable(table, target)
+    }
 
-    var migrations = BackfillTable(table, target)
-
+    //  format the migrations slice
     for _, mig := range migrations {
         // if no output path specified, just print
         if (len(Opts.Output) == 0) {

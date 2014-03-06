@@ -44,7 +44,7 @@ func Init(session *gocql.Session) {
 //  AllKeyspaces
 //      Retrive all keyspaces and all nested attributes
 //
-func AllKeyspaces() []KeyspaceDescriptor {
+func AllKeyspaces() ([]KeyspaceDescriptor, error) {
     var name string
     var options string
     var keyspaces = make([]KeyspaceDescriptor, 0)
@@ -56,19 +56,24 @@ func AllKeyspaces() []KeyspaceDescriptor {
     for iter.Scan(&name, &options) {
         var parsedOption = parseOptions(options)
 
+        var tables, err = AllTables(name)
+        if (err != nil) {
+            return nil, err
+        }
+
         // make the keyspace descriptor
         keyspaces = append(keyspaces, KeyspaceDescriptor{
             Name:       name,
             Options:    parsedOption,
-            Tables:     AllTables(name),
+            Tables:     tables,
         })
     }
     if err := iter.Close(); err != nil {
         fmt.Printf("ERROR: could not get keyspaces list:\n%s\n", err)
-        os.Exit(1)
+        return nil, err
     }
 
-    return keyspaces
+    return keyspaces, nil
 }
 
 
@@ -77,25 +82,25 @@ func AllKeyspaces() []KeyspaceDescriptor {
 //      Get a single keyspace
 //      Includes a list of tables and their columns
 //
-func Keyspace(name string) KeyspaceDescriptor {
+func Keyspace(name string) (KeyspaceDescriptor, error) {
     var options string
 
     // create an iterator over keyspace descriptors
     var err = Session.Query(`SELECT strategy_options FROM system.schema_keyspaces WHERE keyspace_name = ?;`, name).Scan(&options)
     if err != nil {
-        if (err.Error() == "not found") {
-            fmt.Println("That kayspace does not exist.")
-        } else {
-            fmt.Printf("ERROR: could not get keyspace:\n%s\n", err)
-        }
-        os.Exit(1)
+        return KeyspaceDescriptor{}, err
+    }
+
+    var tables, tblErr = AllTables(name)
+    if (tblErr != nil) {
+        return KeyspaceDescriptor{}, tblErr
     }
 
     return KeyspaceDescriptor{
         Name:       name,
         Options:    parseOptions(options),
-        Tables:     AllTables(name),
-    }
+        Tables:     tables,
+    }, nil
 }
 
 
@@ -147,7 +152,7 @@ func parseOptions(options string) map[string]interface{} {
 //  AllTables
 //      Get descriptors of all the tables in a given keyspace
 //
-func AllTables(keyspace string) (result []TableDescriptor) {
+func AllTables(keyspace string) (result []TableDescriptor, err error) {
     var name string
 
     // create an iterator over keyspace descriptors
@@ -155,18 +160,23 @@ func AllTables(keyspace string) (result []TableDescriptor) {
 
     // iterate over the results
     for iter.Scan(&name) {
+        var columns, err = Columns(keyspace, name)
+        if (err != nil) {
+            return result, err
+        }
+
         result = append(result, TableDescriptor{
             Name:           name,
             Keyspace:       keyspace,
-            Columns:        ListColumns(keyspace, name),
+            Columns:        columns,
         })
     }
     if err := iter.Close(); err != nil {
+        return result, err
         fmt.Printf("ERROR: could not get keyspaces list:\n%s\n", err)
-        os.Exit(1)
     }
 
-    return result
+    return result, nil
 }
 
 
@@ -174,31 +184,31 @@ func AllTables(keyspace string) (result []TableDescriptor) {
 //  Table
 //      Get the table descriptor for a single table in a given keyspace
 //
-func Table(keyspace, table string) (result TableDescriptor) {
+func Table(keyspace, table string) (result TableDescriptor, err error) {
     var name string
-    var err = Session.Query(`SELECT columnfamily_name FROM system.schema_columnfamilies WHERE keyspace_name = ? AND columnfamily_name = ?;`, keyspace, table).Scan(&name)
+    err = Session.Query(`SELECT columnfamily_name FROM system.schema_columnfamilies WHERE keyspace_name = ? AND columnfamily_name = ?;`, keyspace, table).Scan(&name)
     if (err != nil) {
-        if (err.Error() == "not found") {
-            fmt.Println("That columnfamily does not exist.")
-        } else {
-            fmt.Printf("ERROR: could not get columnfamily from system schema\n%s\n\n", err)
-        }
-        os.Exit(1)
+        return result, err
+    }
+
+    columns, err := Columns(keyspace, table)
+    if (err != nil) {
+        return result, err
     }
 
     return TableDescriptor{
         Name:           table,
         Keyspace:       keyspace,
-        Columns:        ListColumns(keyspace, table),
-    }
+        Columns:        columns,
+    }, nil
 }
 
 
 //
-//  ListColumns
+//  Columns
 //      Get mapping of name -> type mapping for all columns in keyspace.table
 //
-func ListColumns(keyspace, table string) (result []ColumnDescriptor) {
+func Columns(keyspace, table string) (result []ColumnDescriptor, err error) {
     var name string
     var columnType string
     var datatype string
@@ -232,10 +242,10 @@ func ListColumns(keyspace, table string) (result []ColumnDescriptor) {
             Primary:        columnType == "partition_key",
         })
     }
-    if err := iter.Close(); err != nil {
+    if err = iter.Close(); err != nil {
         fmt.Printf("ERROR: could not get keyspaces list:\n%s\n", err)
-        os.Exit(1)
+        return result, err
     }
 
-    return result
+    return result, nil
 }

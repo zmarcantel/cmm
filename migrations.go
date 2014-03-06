@@ -344,7 +344,7 @@ func CreationMigration(table db.TableDescriptor, colName string, colType string)
     return Migration{
         Name:     currDate.Format(time.RFC3339Nano) + "_add_" + colName + "_to_" + table.Name + ".cql",
         Query:    result,
-    };
+    }
 }
 
 
@@ -359,7 +359,7 @@ func RemovalMigration(table db.TableDescriptor, colName string) Migration {
     return Migration{
         Name:     currDate.Format(time.RFC3339Nano) + "_remove_" + colName + "_from_" + table.Name + ".cql",
         Query:    result,
-    };
+    }
 }
 
 
@@ -383,5 +383,26 @@ func ChangeTypeMigration(table db.TableDescriptor, colName, newType string) Migr
     return Migration{
         Name:     currDate.Format(time.RFC3339Nano) + "_change_" + table.Keyspace + "_" + table.Name + "_" + colName + "_to_" + typeString + ".cql",
         Query:    result,
-    };
+    }
+}
+
+
+//
+//  CreateTableMigration
+//      Creates a migrations that will create a table from a target schema
+//
+func CreateTableMigration(keyspace, table string, target map[string]interface{}) []Migration {
+    var result = "CREATE TABLE " + keyspace + "." + table + " (\n"
+    for key, value := range target {
+        result += fmt.Sprintf("\t%10s\t%-20s\n", key, value.(string))
+    }
+    result += "\n);"
+
+    var currDate = time.Now()
+    return []Migration{
+        Migration{
+            Name:       currDate.Format(time.RFC3339Nano) + "_create_table_" + keyspace + "_" + table + ".cql",
+            Query:      result,
+        },
+    }
 }

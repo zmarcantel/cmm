@@ -4,7 +4,7 @@ default: dependencies
 	go build -o bin/$(PROG_NAME)
 
 dependencies:
-	# go list -f "{{range .Imports}}{{.}} {{end}}" ./*.go | xargs go get
+	go list -f "{{ range .Deps }}{{ . }} {{ end }}" ./ | tr ' ' '\n' | awk '!/^.\//' | xargs go get
 
 todo:
 	grep -nri "TODO:"

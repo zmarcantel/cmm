@@ -1,0 +1,36 @@
+{
+    "Name": "users",
+    "Keyspace": "cmm_main",
+    "Columns": [
+        {
+            "Name": "email",
+            "Type": "TEXT",
+            "Primary": false
+        },
+        {
+            "Name": "first_name",
+            "Type": "TEXT",
+            "Primary": false
+        },
+        {
+            "Name": "id",
+            "Type": "UUID",
+            "Primary": true
+        },
+        {
+            "Name": "items",
+            "Type": "SET<UUID>",
+            "Primary": false
+        },
+        {
+            "Name": "join_date",
+            "Type": "TIMESTAMP",
+            "Primary": false
+        },
+        {
+            "Name": "last_name",
+            "Type": "TEXT",
+            "Primary": false
+        }
+    ]
+}

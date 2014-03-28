@@ -6,6 +6,8 @@ import (
     "time"
     "regexp"
     "strings"
+    "io/ioutil"
+    "path/filepath"
 
     "github.com/tux21b/gocql"
 
@@ -215,6 +217,22 @@ func (self MigrationCollection) Less(i, j int) bool {
     return self[i].Name < self[j].Name
 }
 
+func (self MigrationCollection) Print() {
+    //  format the migrations slice
+    for _, mig := range self {
+        fmt.Printf("Name: %s\nQuery:\n%s\n\n", mig.Name, mig.Query)
+    }
+}
+
+func (self MigrationCollection) Save(path string) {
+    for _, mig := range self {
+        var err = ioutil.WriteFile(filepath.Join(path, mig.Name), []byte(mig.Query), 0777)
+        if (err != nil) {
+            fmt.Printf("ERROR: could not save migration to directory [%s]\n%s\n\n", Opts.Output, err)
+        }
+    }
+}
+
 
 //-------------------------------------------------------
 // General Functions
@@ -257,6 +275,9 @@ func CreateMigrationTable(session *gocql.Session) {
     if tableErr != nil && strings.Index(tableErr.Error(), "Cannot add already existing") < 0 {
         fmt.Printf("Error placing migrations keyspace: %s\n", tableErr)
     }
+
+    // wait for that to settle
+    time.Sleep(1000 * time.Millisecond)
 }
 
 
@@ -278,57 +299,6 @@ func DoMigrations(migrations []Migration, delay time.Duration) {
         }
         time.Sleep(delay)
     }
-}
-
-
-//
-//  BackfillTable
-//    Generates a series of queries that equate to the diff of the current table, and a given JSON
-//
-func BackfillTable(table db.TableDescriptor, target map[string]interface{}) []Migration {
-    var result []Migration
-
-    // check for additions
-    for key, value := range target {
-        var found = false
-        var col db.ColumnDescriptor
-        for _, col = range table.Columns {
-            if (col.Name == key) {
-                found = true
-
-                // multitask and look for changed type
-                if (strings.Replace(col.Type, "(", "<", -1) != value) {
-                    result = append(result, ChangeTypeMigration(table, col.Name, value.(string)))
-                }
-
-                // escape for loop
-                break
-            }
-        }
-
-        if (!found) {
-            result = append(result, CreationMigration(table, key, value.(string)))
-        }
-    }
-
-
-    // check for removals
-    for _, col := range table.Columns {
-        var found = false
-        for key, _ := range target {
-            if (col.Name == key) {
-                found = true
-                break
-            }
-        }
-
-        if (!found) {
-            result = append(result, RemovalMigration(table, col.Name))
-        }
-    }
-
-
-    return result
 }
 
 

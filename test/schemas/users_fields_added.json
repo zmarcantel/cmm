@@ -1,0 +1,19 @@
+{
+    "_": "----- Original Schema -----",
+
+    "id":           "UUID PRIMARY KEY",
+    "first_name":   "TEXT",
+    "last_name":    "TEXT",
+    "email":        "TEXT",
+
+    "join_date":    "TIMESTAMP",
+
+    "items":        "SET<UUID>",
+
+
+    "_": "------- Added Fields ------",
+
+    "ratings":      "MAP<UUID,FLOAT>",
+    "purchases":    "SET<UUID>",
+    "comments":     "LIST<TEXT>"
+}

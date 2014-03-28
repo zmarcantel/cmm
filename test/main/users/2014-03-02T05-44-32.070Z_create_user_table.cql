@@ -1,6 +1,6 @@
 -- create user table
 
-CREATE TABLE main.users (
+CREATE TABLE cmm_main.users (
     id              UUID PRIMARY KEY,
     first_name      TEXT,
     last_name       TEXT,

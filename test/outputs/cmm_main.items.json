@@ -1,0 +1,16 @@
+{
+    "Name": "items",
+    "Keyspace": "cmm_main",
+    "Columns": [
+        {
+            "Name": "id",
+            "Type": "UUID",
+            "Primary": true
+        },
+        {
+            "Name": "name",
+            "Type": "TEXT",
+            "Primary": false
+        }
+    ]
+}

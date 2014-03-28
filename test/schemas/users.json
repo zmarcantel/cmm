@@ -3,21 +3,14 @@
     "_":            "cmm ignores them as well so it's useful for comments",
 
 
-    "_": "----- Migration Fields -----",
+    "_": "----- Final Schema -----",
 
     "id":           "UUID PRIMARY KEY",
     "first_name":   "TEXT",
     "last_name":    "TEXT",
-    "_":            "remove email:TEXT from migrations to test removal",
+    "email":        "TEXT",
 
     "join_date":    "TIMESTAMP",
 
-    "items":        "SET<TEXT>",
-    "_":            "changed above from SET<UUID> --> SET<TEXT> to test type change",
-
-
-    "_": "----- Backfill Fields -----",
-
-    "ratings":      "MAP<UUID, FLOAT>",
-    "address":      "TEXT"
+    "items":        "SET<UUID>"
 }

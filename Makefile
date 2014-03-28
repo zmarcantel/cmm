@@ -9,7 +9,7 @@ dependencies:
 todo:
 	grep -nri "TODO:"
 
-install:
+install: default
 	cp bin/$(PROG_NAME) /usr/local/bin/
 
 .PHONY: todo install

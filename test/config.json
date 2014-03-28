@@ -8,9 +8,9 @@
         "dbtwo"
     ],
 
-    "Migrations":     "./",
+    "Migrations":     "./test",
 
     "Delay":          0,
-    "File":           "some/input/file",
-    "Output":         "some/output/path/or/file"
+    "File":           "./test/schemas/users.json",
+    "Output":         "./test/main/users"
 }

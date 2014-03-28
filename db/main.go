@@ -227,9 +227,9 @@ func Columns(keyspace, table string) (result []ColumnDescriptor, err error) {
         if (len(parts) == 2) { // target + split
             finalType = parts[0]
         } else if (len(parts) == 3) { // (target + split)*2
-            finalType = fmt.Sprintf("%s(%s)", parts[0], parts[1])
+            finalType = fmt.Sprintf("%s<%s>", parts[0], parts[1])
         } else if (len(parts) == 4) { // (target + split)*3
-            finalType = fmt.Sprintf("%s(%s, %s)", parts[0], parts[1], parts[2])
+            finalType = fmt.Sprintf("%s<%s, %s>", parts[0], parts[1], parts[2])
         } else {
             finalType = columnType
         }

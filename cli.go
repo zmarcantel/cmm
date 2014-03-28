@@ -13,9 +13,6 @@ import (
 
     "github.com/jessevdk/go-flags"
     "github.com/tux21b/gocql"
-    "github.com/aybabtme/color"
-
-    "./db"
 )
 
 var Opts Options
@@ -56,8 +53,6 @@ type Config struct {
     Output         string
 }
 
-var ANSI_PASS = color.NewStyle(color.BlackPaint, color.GreenPaint).Brush()
-var ANSI_FAIL = color.NewStyle(color.BlackPaint, color.RedPaint).Brush()
 
 
 //
@@ -66,100 +61,90 @@ var ANSI_FAIL = color.NewStyle(color.BlackPaint, color.RedPaint).Brush()
 func HandleArguments() {
     if _, help := flags.Parse(&Opts) ; help != nil {
         os.Exit(1)
+    }
+
+    // handle verbosity
+    Verbosity = len(Opts.Verbose)
+
+    // handle config first so any other specified arguments overwrite it
+    // if a config file is specified, use it
+    // otherwise, check ~/.cmm/config.json and then /etc/cmm/config.json
+    if (len(Opts.Config) > 0) {
+        if (Verbosity >= SOFT) {
+            fmt.Printf("Loading config from %s\n", Opts.Config)
+        }
+        handleConfig()
     } else {
-        // handle config first so any other specified arguments overwrite it
-        if (len(Opts.Config) > 0) {
-            if (Verbosity >= SOFT) {
-                fmt.Printf("Loading config from %s\n", Opts.Config)
+        if _, err := os.Stat(filepath.Join(os.Getenv("HOME"), ".cmm/config.json")); os.IsNotExist(err) {
+            // the "default" config does not exist
+            // atttempt to load a global one
+            if _, etcErr := os.Stat("/etc/cmm/config.json"); os.IsNotExist(etcErr) {
+                // global does not exist either. ignore
+                if (Verbosity >= SOFT) { fmt.Println("No config files found.") }
+            } else {
+                Opts.Config = "/etc/cmm/config.json"
+                handleConfig()
             }
+        } else {
+            Opts.Config = filepath.Join(os.Getenv("HOME"), ".cmm/config.json")
             handleConfig()
         }
+    }
 
 
-        // handle hosts list
-        if (len(Opts.Hosts) == 0) {
-            if (Verbosity >= SOFT) {
-                fmt.Println("Defaulting to single host { localhost:9042 }")
-            }
-            Hosts = []string{"localhost:9042"}
+    // handle hosts list
+    if (len(Opts.Hosts) == 0) {
+        if (Verbosity >= SOFT) {
+            fmt.Println("Defaulting to single host { localhost:9042 }")
+        }
+        Hosts = []string{"localhost:9042"}
+    }
+
+    // handle migration directory
+    if (len(Opts.Migrations) == 0) {
+        if (Verbosity >= SOFT) {
+            fmt.Println("Defaulting to current directory for migrations")
+        }
+        Opts.Migrations = "./"
+    }
+
+    // handle delay timer
+    var delayErr error
+    if (Opts.Delay > 0) {
+        SettleTime, delayErr = time.ParseDuration(strconv.FormatInt(Opts.Delay, 10) + "ms")
+        if (Verbosity >= SOFT) {
+            fmt.Printf("Adding %dms delay after all queries\n", Opts.Delay)
+        }
+    } else {
+        SettleTime, delayErr = time.ParseDuration("0ms")
+    }
+    if (delayErr != nil) { panic(delayErr) }
+
+    // handle consistency
+    if (len(Opts.Consistency) == 0) {
+        Consistency = gocql.Quorum
+    } else {
+        var consistencies = map[string]gocql.Consistency {
+            "any":              gocql.Any,
+            "one":              gocql.One,
+            "two":              gocql.Two,
+            "three":            gocql.Three,
+            "quorum":           gocql.Quorum,
+            "all":              gocql.All,
+            "localquorum":      gocql.LocalQuorum,
+            "eachquorum":       gocql.EachQuorum,
+            "serial":           gocql.Serial,
+            "localserial":      gocql.LocalSerial,
         }
 
-        // handle migration directory
-        if (len(Opts.Migrations) == 0) {
-            if (Verbosity >= SOFT) {
-                fmt.Println("Defaulting to current directory for migrations")
-            }
-            Opts.Migrations = "./"
-        }
-
-        // handle delay timer
-        var delayErr error
-        if (Opts.Delay > 0) {
-            SettleTime, delayErr = time.ParseDuration(strconv.FormatInt(Opts.Delay, 10) + "ms")
-            if (Verbosity >= SOFT) {
-                fmt.Printf("Adding %dms delay after all queries\n", Opts.Delay)
-            }
+        if val, exists := consistencies[strings.ToLower(Opts.Consistency)] ; exists {
+            Consistency = val
         } else {
-            SettleTime, delayErr = time.ParseDuration("0ms")
-        }
-        if (delayErr != nil) { panic(delayErr) }
-
-        // handle verbosity
-        Verbosity = len(Opts.Verbose)
-
-        // handle consistency
-        if (len(Opts.Consistency) == 0) {
             Consistency = gocql.Quorum
-        } else {
-            switch(strings.ToLower(Opts.Consistency)) {
-                case "any":
-                    Consistency = gocql.Any
-                    break
+        }
 
-                case "one":
-                    Consistency = gocql.One
-                    break
-
-                case "two":
-                    Consistency = gocql.Two
-                    break
-
-                case "three":
-                    Consistency = gocql.Three
-                    break
-
-                case "quorum":
-                    Consistency = gocql.Quorum
-                    break
-
-                case "all":
-                    Consistency = gocql.All
-                    break
-
-                case "localquorum":
-                    Consistency = gocql.LocalQuorum
-                    break
-
-                case "eachquorum":
-                    Consistency = gocql.EachQuorum
-                    break
-
-                case "serial":
-                    Consistency = gocql.Serial
-                    break
-
-                case "localserial":
-                    Consistency = gocql.LocalSerial
-                    break
-
-                default:
-                    Consistency = gocql.Quorum
-                    break
-            }
-
-            if (Verbosity > QUIET) {
-                fmt.Printf("Using consistency: %s\n", Consistency)
-            }
+        if (Verbosity > QUIET) {
+            fmt.Printf("Using consistency: %s\n", Consistency)
         }
     }
 }
@@ -232,148 +217,6 @@ func GetMigrationFiles(dir string) {
 
 
 //
-//  handlePseudocommands
-//      This will be the "catch point" for flags that do not run migrations
-//
-func handlePseudocommands() {
-    if (Opts.Describe != "none") {
-        handleDescribe()
-        os.Exit(1)
-    }
-
-    if (Opts.Backfill != "none") {
-        handleBackfill()
-        os.Exit(1)
-    }
-
-    if (Opts.List || Opts.JsonList) {
-        handleList(Opts.JsonList)
-        os.Exit(1)
-    }
-}
-
-
-//
-//  handleDescribe
-//      Describe the given object
-//      Can be "", "all", "none", "keyspace", "keyspace.table"
-//
-func handleDescribe() {
-    var result []byte
-    var err error
-
-    if (Opts.Describe == "" || Opts.Describe == "all") {    // "all", or just --describe
-        var keyspaces, err = db.AllKeyspaces()
-        if (err != nil) {
-            if (err.Error() == "not found") {
-                fmt.Println("That kayspace does not exist.")
-            } else {
-                fmt.Printf("ERROR: could not get keyspace:\n%s\n", err)
-            }
-            os.Exit(1)
-        }
-        result, err = json.MarshalIndent(keyspaces, "", "    ")
-
-    } else if (strings.Index(Opts.Describe, ".") > 0) {     // keyspace.table pair
-        var parts = strings.Split(Opts.Describe, ".")
-        var table, err = db.Table(parts[0], parts[1])
-        if (err != nil) {
-            if (err.Error() == "not found") {
-                fmt.Println("That columnfamily does not exist.")
-            } else {
-                fmt.Printf("ERROR: could not get columnfamily:\n%s\n", err)
-            }
-            os.Exit(1)
-        }
-        result, err = json.MarshalIndent(table, "", "    ")
-
-    } else {                                                // default to keyspace
-        var keyspace, err = db.Keyspace(Opts.Describe)
-        if (err != nil) {
-            if (err.Error() == "not found") {
-                fmt.Println("That columnfamily does not exist.")
-            } else {
-                fmt.Printf("ERROR: could not get columnfamily:\n%s\n", err)
-            }
-            os.Exit(1)
-        }
-        result, err = json.MarshalIndent(keyspace, "", "    ")
-    }
-
-    if err != nil {
-        fmt.Printf("ERROR: invalid internal json representation\n%s\n", err)
-        os.Exit(1)
-    }
-
-    fmt.Print(string(result))
-}
-
-
-//
-//  handleBackfill
-//      Initiates the generation of migrations that bring the current table to equal a JSON descriptor
-//
-func handleBackfill() {
-    if (len(Opts.File) <= 0) {
-        fmt.Println("ERROR: must supply (-f, --file) flag to backfill")
-        os.Exit(1)
-    }
-
-    if (strings.Index(Opts.Backfill, ".") < 1) {
-        fmt.Println("ERROR: backfill can only be used on {keyspace}.{table} items")
-        os.Exit(1)
-    }
-
-    // read target JSON
-    var contents, err = ioutil.ReadFile(Opts.File)
-    if (err != nil) {
-        fmt.Printf("ERROR: could not read descriptor JSON:\n%s\n\n", err)
-        os.Exit(1)
-    }
-
-    // unmarshal target JSON
-    var target map[string]interface{}
-    var jsonErr = json.Unmarshal(contents, &target)
-    if (jsonErr != nil) {
-        fmt.Printf("ERROR: could not parse descriptor JSON:\n%s\n\n", jsonErr)
-        os.Exit(1)
-    }
-
-    delete(target, "_")
-
-    // create the placeholder for the result migrations
-    var migrations []Migration
-
-    // get existing table
-    var parts = strings.Split(Opts.Backfill, ".")
-    var table, tblErr = db.Table(parts[0], parts[1])
-    if (tblErr != nil) {
-        if (tblErr.Error() == "not found") {
-            migrations = CreateTableMigration(parts[0], parts[1], target)
-        } else {
-            os.Exit(1)
-        }
-    } else {
-        migrations = BackfillTable(table, target)
-    }
-
-    //  format the migrations slice
-    for _, mig := range migrations {
-        // if no output path specified, just print
-        if (len(Opts.Output) == 0) {
-            fmt.Printf("%s\n", mig.Query)
-        } else {
-            // gave us a string, hopefully path
-            var err = ioutil.WriteFile(filepath.Join(Opts.Output, mig.Name), []byte(mig.Query), 0777)
-            if (err != nil) {
-                fmt.Printf("ERROR: could not save migration to directory [%s]\n%s\n\n", Opts.Output, err)
-            }
-        }
-    }
-}
-
-
-//
 //  handleConfig
 //      Load a configuration map from a given JSON file
 //
@@ -430,45 +273,34 @@ func handleConfig() {
 
 
 //
-//  handleList
-//      Return lists of completed and remaining migrations
-//      JSON flag determines if output is JSON
+//  handlePseudocommands
+//      This will be the "catch point" for flags that do not run migrations
 //
-func handleList(isJson bool) { // should explicitly be passed Opts.JsonList
-    GetMigrationFiles(Opts.Migrations)
-
-    var complete = make([]Migration, 0)
-    var remaining = make([]Migration, 0)
-    for _, mig := range Migrations {
-        var isComplete, err = mig.IsComplete()
-        if (err != nil) {
-            fmt.Printf("ERROR: error checking completion status of [%s]\n%s\n\n", mig.Name, err)
-            return
-        }
-
-        if (isComplete == false) {
-            remaining = append(remaining, mig)
-        } else {
-            complete = append(complete, mig)
-        }
+func handlePseudocommands() {
+    if (Opts.Describe != "none") {
+        var jsonString = Describe(Opts.Describe)
+        fmt.Println(jsonString)
+        os.Exit(1)
     }
 
-    if (isJson) {
-        var formatted, err = json.MarshalIndent(map[string][]Migration{
-            "Complete":       complete,
-            "Remaining":      remaining,
-        }, "", "    ")
-        if (err != nil) {
-            fmt.Printf("ERROR: could not marshal JSON of --list\n%s\n\n", err)
-            return
+    if (Opts.Backfill != "none") {
+        var migs = Backfill(Opts.Describe, Opts.File)
+        // if no output path specified, just print
+        if (len(Opts.Output) == 0) {
+            migs.Print()
+        } else {
+            migs.Save(Opts.Output)
         }
-        fmt.Println(string(formatted))
-    } else {
-        for _, mig := range complete {
-            fmt.Printf("%5s  %s\n", ANSI_PASS("+"), ANSI_PASS(mig.Name))
-        }
-        for _, mig := range remaining {
-            fmt.Printf("%5s  %2s\n", ANSI_FAIL("-"), ANSI_FAIL(mig.Name))
-        }
+        os.Exit(1)
+    }
+
+    if (Opts.List) {
+        fmt.Println(List(Opts.JsonList))
+        os.Exit(1)
+    }
+
+    if (Opts.JsonList) {
+        fmt.Println(ListToJSON(List(Opts.JsonList)))
+        os.Exit(1)
     }
 }

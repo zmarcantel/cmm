@@ -7,7 +7,7 @@ import (
     "io/ioutil"
     "encoding/json"
 
-    "./db"
+    "github.com/zmarcantel/cmm/db"
 
     "github.com/aybabtme/color/brush"
 )

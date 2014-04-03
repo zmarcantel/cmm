@@ -11,7 +11,7 @@ import (
 
     "github.com/tux21b/gocql"
 
-    "./db"
+    "github.com/zmarcantel/cmm/db"
 )
 
 //-------------------------------------------------------

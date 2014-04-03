@@ -12,4 +12,10 @@ todo:
 install: default
 	cp bin/$(PROG_NAME) /usr/local/bin/
 
-.PHONY: todo install
+vm:
+	vagrant up
+
+test:
+	vagrant provision
+
+.PHONY: todo install vm

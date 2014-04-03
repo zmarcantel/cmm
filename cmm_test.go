@@ -12,7 +12,20 @@ import (
     "./db"
 )
 
-var GOOD_HOSTS = []string{"192.168.33.100", "192.168.33.101", "192.168.33.150"}
+var GOOD_HOSTS []string
+
+func TestSetup(t *testing.T) {
+    var testHosts = os.Getenv("TEST_HOSTS")
+    fmt.Printf("Test Hosts: %s\n", testHosts)
+
+    if len(testHosts) > 0 {
+        GOOD_HOSTS = strings.Split(testHosts, ",")
+        _ = os.Setenv("TEST_HOSTS", "")
+    } else {
+        // EDIT HERE IF YOU NEED TO MANUALLY SET IPS
+        GOOD_HOSTS = []string{ "192.168.50.100" }
+    }
+}
 
 func TestConfig(t *testing.T) {
     var testConf = "./test/config.json"
@@ -35,6 +48,11 @@ func TestConfig(t *testing.T) {
             "expected", "quorum",
             "got", Opts.Consistency,
         )
+    }
+
+    // but we may need to alter this depending on size of test cluster
+    if (len(GOOD_HOSTS) == 1) {
+        Consistency = gocql.One
     }
 
     // check peers array is loaded correctly
@@ -293,7 +311,7 @@ func TestBackfillAdd(t *testing.T) {
         "ALTER TABLE cmm_main.users ADD ratings MAP<UUID,FLOAT>;",
         "ALTER TABLE cmm_main.users ADD comments LIST<TEXT>;",
     }
-    
+
     for _, mig := range migs {
         if (len(mig.Name) == 0) {
             t.Error(
@@ -322,7 +340,7 @@ func TestBackfillRemove(t *testing.T) {
         "ALTER TABLE cmm_main.users DROP items;",
         "ALTER TABLE cmm_main.users DROP join_date;",
     }
-    
+
     for _, mig := range migs {
         if (len(mig.Name) == 0) {
             t.Error(
@@ -355,7 +373,7 @@ func TestBackfillMixed(t *testing.T) {
         "ALTER TABLE cmm_main.users ADD ratings MAP<UUID,FLOAT>;",
         "ALTER TABLE cmm_main.users ADD comments LIST<TEXT>;",
     }
-    
+
     for _, mig := range migs {
         if (len(mig.Name) == 0) {
             t.Error(

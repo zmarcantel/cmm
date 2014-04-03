@@ -261,7 +261,7 @@ func CreateMigrationTable(session *gocql.Session) {
     }
 
     // wait for that to settle
-    time.Sleep(1000 * time.Millisecond)
+    time.Sleep(2000 * time.Millisecond)
 
     if (Verbosity > SOFT) {
         fmt.Println("Creating migration table")
@@ -273,11 +273,11 @@ func CreateMigrationTable(session *gocql.Session) {
         date      TIMESTAMP
     )`).Exec()
     if tableErr != nil && strings.Index(tableErr.Error(), "Cannot add already existing") < 0 {
-        fmt.Printf("Error placing migrations keyspace: %s\n", tableErr)
+        fmt.Printf("Error placing migrations.completed table: %s\n", tableErr)
     }
 
     // wait for that to settle
-    time.Sleep(1000 * time.Millisecond)
+    time.Sleep(2000 * time.Millisecond)
 }
 
 

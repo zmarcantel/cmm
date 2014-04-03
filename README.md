@@ -27,6 +27,9 @@ Table of Contents:
   * [describe](#describe) -- schema to json
   * [backfill](#backfill) -- json to schema
   * [list](#list) -- print report of completed/remaining migrations
+* Testing
+  * [Automated Testing in VM](#testing-in-a-vm)
+  * [Against Your Cluster](#testing-with-your-cluster)
 
 
 Planned Features
@@ -87,7 +90,7 @@ Optionally, a comment sepcifying a per-migration delay can be used.
 
     -- delay: 1500
     -- the above comment is parsed, adding a 1500ms delay to end of this query
-    
+
     ALTER TABLE main.users ADD friends SET<UUID>;
     ALTER TABLE main.users ADD recommended_friends SET<UUID>;
 
@@ -159,7 +162,7 @@ Command Flags
     File          short: "f"   long: "file"           description: "Generic file input -- used in giving backfill a JSON file"
     Output        short: "o"   long: "output"         description: "File or path to output operation to"
 
-    
+
     // Pseudo-Commands -- results in information, not commands being run
 
     Help          short: "h"   long: "help"           description: "Show the help menu"
@@ -538,3 +541,52 @@ Using either `-j` or `--list.json`, a json object of the format
     ]
 }
 ````
+
+
+Testing
+=======
+
+Test cases can always be expanded.
+
+Al the moment they are rapidly expanding, but please feel free to contribute.
+
+Many functions/pseudocommands are tested implicitly rather than explicitly but this will change as cases rather than infrastructure have become a focus.
+
+
+Testing In A VM
+---------------
+
+All testing has been automated using a VM initiated by [Vagrant](http://vagrantup.com) and a 3-instance cluster thanks to [docker](http://docker.io).
+
+Vagrant depends on virtualbox to spin up a VM using Ubuntu Precise, install `docker`, pull a [cassandra docker image]("http://github.com/zmarcantel/docker-cassandra"), and use that image to sping up a 3-container cluster.
+
+The `Vagrantfile` in the root directory controls all of this. To initiate it:
+
+    # using vagrant
+    vagrant up
+
+    # using make
+    make test
+
+    # to re-run tests, either of the below
+    make test
+    vagrant provision
+
+
+
+Testing With Your Cluster
+-------------------------
+
+If you are working on a system you do not wish to start an isolated test environment on, the following steps will describe how to test from a local command prompt.
+
+After cloning the source, set the following environment variable as so:
+
+    export TEST_HOSTS=192.168.50.100,127.0.0.1:1234,cassHostname
+
+The tests check for the `TEST_HOSTS` variable and use the comma separated list exactly the same as the peer command to the binary.
+
+You can also simply prefix `go test` with the variable as so:
+
+    TEST_HOSTS=192.168.50.100 go test
+
+Alternatively, alter the source of `cmm_test.go` which contains a fallback IP (the one immediately above). If you submit a pull request with this as a line change I will remove the request. Please don't make me a liar in the README.

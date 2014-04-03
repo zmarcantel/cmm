@@ -558,7 +558,7 @@ Testing In A VM
 
 All testing has been automated using a VM initiated by [Vagrant](http://vagrantup.com) and a 3-instance cluster thanks to [docker](http://docker.io).
 
-Vagrant depends on virtualbox to spin up a VM using Ubuntu Precise, install `docker`, pull a [cassandra docker image]("http://github.com/zmarcantel/docker-cassandra"), and use that image to sping up a 3-container cluster.
+Vagrant depends on virtualbox to spin up a VM using Ubuntu Precise, install `docker`, pull a [cassandra docker image](http://github.com/zmarcantel/docker-cassandra), and use that image to sping up a 3-container cluster.
 
 The `Vagrantfile` in the root directory controls all of this. To initiate it:
 

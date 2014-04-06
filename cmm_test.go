@@ -9,7 +9,7 @@ import (
 
     "github.com/tux21b/gocql"
 
-    "./db"
+    "github.com/zmarcantel/cmm/db"
 )
 
 var GOOD_HOSTS []string
@@ -22,8 +22,7 @@ func TestSetup(t *testing.T) {
         GOOD_HOSTS = strings.Split(testHosts, ",")
         _ = os.Setenv("TEST_HOSTS", "")
     } else {
-        // EDIT HERE IF YOU NEED TO MANUALLY SET IPS
-        GOOD_HOSTS = []string{ "192.168.50.100" }
+        GOOD_HOSTS = []string{ "192.168.50.100" } //"192.168.33.100", "192.168.33.101", "192.168.33.150"}
     }
 }
 

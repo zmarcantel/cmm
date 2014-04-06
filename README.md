@@ -126,20 +126,20 @@ There is an example in `test/config.json` as well.
 
 ````json
 {
-    "Protocol":       2,
-    "Consistency":    "quorum",
+    "Protocol":       2,                        # cassandra protocol to use
+    "Consistency":    "quorum",                 # consistency to require of queries
 
-    "Peers":          [
+    "Peers":          [                         # array of seed peers
         "192.168.33.100",
         "192.168.33.101",
         "192.168.33.150"
     ],
 
-    "Migrations":     "../",
+    "Migrations":     "./migrations",           # root directory of migrations
 
-    "Delay":          250,
-    "File":           "./schemas/user.json",
-    "Output":         "./schemas"
+    "Delay":          250,                      # Delay between migrations (highly optional)
+    "File":           "./schemas/user.json",    # Default file to use for pseudo-commands
+    "Output":         "./migrations"            # Default folder to save output migrations to
 }
 ````
 
@@ -438,8 +438,8 @@ where `column_type` consists of the all-caps options:
 * UUID
 * TIMEUUID
 * BYTE
-* MAP(X,Y)
-* SET(X)
+* MAP<X,Y>
+* SET<X>
 * ... I'm probably missing a few but you get the idea
 
 
@@ -465,6 +465,8 @@ If you `--backfill` a columnfamily that does not exist, a `CREATE TABLE` query w
 
 ### How It Works
 
+Migrations are spit out to the console one-per-line.
+
 Let's pretend we have an existing table `main.users` that looks similar to the above example, except:
 
 * `date_joined` not in table
@@ -480,7 +482,24 @@ Running `cmm --backfill main.users --file schema/users.json` will print the foll
 
 __NOTE:__ for minimal complication, renames are a sequential remove+add -- will be combined in future releases
 
-Migrations are spit out to the console one-per-line.
+Any half-decent developer is going to be looking awkwardly at the `DROP` and subsequent `ADD`. You should.
+
+Running a schema migration is that, a schema migration. If you are concerned with data loss, Apply the migrations in steps along with __in-house__ data migration.
+
+Data migration is a bit out of scope I feel. It would be a fantastic feature, and potentially a separate project I will integrate/call.
+
+The basic algorithm would be:
+
+1. Copy (id, data) from any dropped columns
+2. DROP the columns
+3. ADD the new columns
+3. Copy the (id, data) to the new columns
+
+We could do this on a per-run basis as in detecting rename and generating a script... but what language, environment, etc?
+
+I feel `cmm` provides the tools to implement the above steps in a small number of semantic lines.
+
+If someone would like to issue a pull request with a `bash` or similar style script that implements the above that would be fantastic. I may get around to it.
 
 ### Saving
 
@@ -488,16 +507,28 @@ Naturally, you'll need to save these migrations to actually run them.
 
 __Option 1:__
 
-* use `--output` to specify directory
-* generates one file per migration following `RFC3339_some_descriptive_text.cql` format
-* `cmm -b main.users -f users.json -o ./migrations`
-* ___note:___ generated files included nanoseconds as part of the RFC3339 prefix. We just generate them too fast otherwise :)
+
+Use `--output` to specify directory.
+
+This generates one file per migration following `{RFC3339}_some_descriptive_text.cql` format. ___note:___ generated files included nanoseconds as part of the RFC3339 prefix. We just generate them too fast to use milliseconds :)
+
+Example:
+
+    cmm -b main.users -f users.json -o ./migrations
 
 __Option 2:__
 
-* echo/pipe to a file at the command line
-* `cmm -b main.users -f users.json > migrations.cql`
-* `cmm -b main.users -f users.json | tee -a migrations.cql`
+Directing (>) or piping (|) to a file at the command line.
+
+Direct to file with or without overwrite:
+
+1. `cmm -b main.users -f users.json > single_migration.cql`
+2. `cmm -b main.users -f users.json >> multiple_migrations.cql`
+
+Pipe to file with or without overwrite:
+
+1. `cmm -b main.users -f users.json | tee single_migration.cql`
+2. `cmm -b main.users -f users.json | tee -a multiple_migrations.cql`
 
 
 List
